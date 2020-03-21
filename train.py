@@ -22,6 +22,8 @@ device_list = [0,1,2,3]
 train_net = 'deeplabv3p'
 nets = {'deeplabv3p': DeeplabV3Plus, 'unet': ResNetUNet}
 
+Resume = False
+
 def train_epoch(net, epoch, dataLoader, optimizer, trainF, config):
     net.train()
     total_mask_loss = 0.0
@@ -84,9 +86,9 @@ def adjust_lr(optimizer, epoch):
 
 def main():
     lane_config = Config()
-    if os.path.exists(lane_config.SAVE_PATH):
-        shutil.rmtree(lane_config.SAVE_PATH)
-    os.makedirs(lane_config.SAVE_PATH, exist_ok=True)
+    if not os.path.exists(lane_config.SAVE_PATH):
+        #shutil.rmtree(lane_config.SAVE_PATH)
+        os.makedirs(lane_config.SAVE_PATH, exist_ok=True)
     trainF = open(os.path.join(lane_config.SAVE_PATH, "train.csv"), 'w')
     testF = open(os.path.join(lane_config.SAVE_PATH, "test.csv"), 'w')
     kwargs = {'num_workers': 4, 'pin_memory': True} if torch.cuda.is_available() else {}
@@ -97,7 +99,22 @@ def main():
     val_dataset = LaneDataset("val.csv", transform=transforms.Compose([ToTensor()]))
 
     val_data_batch = DataLoader(val_dataset, batch_size=2*len(device_list), shuffle=False, drop_last=False, **kwargs)
+    
+    
     net = nets[train_net](lane_config)
+    optimizer = torch.optim.Adam(net.parameters(), lr=lane_config.BASE_LR, weight_decay=lane_config.WEIGHT_DECAY)
+
+    epoch_to_continue = 0#
+    if Resume is True:     
+        checkpoint_path = os.path.join(os.getcwd(), lane_config.SAVE_PATH, "epoch{}Net.pth.tar".format(epoch_to_continue))
+        checkpoint = torch.load(checkpoint_path)
+        #model_param = torch.load(checkpoint_path)['state_dict']
+        #model_param = {k.replace('module.', ''):v for k, v in model_param.items()}
+        net.load_state_dict(checkpoint['state_dict']) #加载net参数
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        epoch_to_continue = checkpoint['epoch']
+
+
     if torch.cuda.is_available():
         net = net.cuda(device=device_list[0])
 
@@ -105,14 +122,21 @@ def main():
         net = torch.nn.DataParallel(net, device_ids=device_list)
     # optimizer = torch.optim.SGD(net.parameters(), lr=lane_config.BASE_LR,
     #                             momentum=0.9, weight_decay=lane_config.WEIGHT_DECAY)
-    optimizer = torch.optim.Adam(net.parameters(), lr=lane_config.BASE_LR, weight_decay=lane_config.WEIGHT_DECAY)
-    for epoch in range(lane_config.EPOCHS):
+
+
+    for epoch in range(epoch_to_continue,epoch_to_continue+lane_config.EPOCHS):
         # adjust_lr(optimizer, epoch)
         train_epoch(net, epoch, train_data_batch, optimizer, trainF, lane_config)
-        if epoch % 2 == 0:
+        if epoch % 5 == 0:
             #存储的参数是net的模型参数，没有网络结构
             #torch.save({'state_dict': net.module.state_dict()}, os.path.join(os.getcwd(), lane_config.SAVE_PATH, "laneNet{}.pth.tar".format(epoch)))
-            torch.save({'state_dict': net.state_dict()}, os.path.join(os.getcwd(), lane_config.SAVE_PATH, "laneNet{}.pth.tar".format(epoch)))
+            #torch.save({'state_dict': net.state_dict()}, os.path.join(os.getcwd(), lane_config.SAVE_PATH, "laneNet{}.pth.tar".format(epoch)))
+            torch.save({
+                        'epoch':epoch,
+                        'state_dict': net.module.state_dict(),#加了module
+                        'optimizer_state_dict':optimizer.state_dict(),
+                       },os.path.join(os.getcwd(), lane_config.SAVE_PATH, "epoch{}Net.pth.tar".format(epoch)))
+        
         test(net, epoch, val_data_batch, testF, lane_config)
         
         

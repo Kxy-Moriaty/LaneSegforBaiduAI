@@ -41,10 +41,11 @@ def load_model(model_path):
         map_location = 'cpu'
 
     #
-    model_param = torch.load(model_path, map_location=map_location)['state_dict']
-   
+    #model_param = torch.load(model_path, map_location=map_location)['state_dict']
+    checkpoint = torch.load(model_path,map_location=map_location)
+    model_param = checkpoint['state_dict']
     #??
-    model_param = {k.replace('module.', ''):v for k, v in model_param.items()}
+    #model_param = {k.replace('module.', ''):v for k, v in model_param.items()}
     
     net.load_state_dict(model_param)
     return net
@@ -91,6 +92,10 @@ def main():
     test_dir = 'test_example'
     model_dir = 'test_example/logs_1'
     model_path = os.path.join(model_dir,'finalNet.pth.tar')
+    model_path = 'test_example/logs_2/epoch25Net.pth.tar'
+    if not os.path.exists(model_path):
+        exit()
+    
     print('Loading model...')
     net = load_model(model_path)
     print('Done.')

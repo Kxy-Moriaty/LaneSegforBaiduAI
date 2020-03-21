@@ -9,7 +9,7 @@ class Config(object):
     NUM_CLASSES = 8
 
     # train config
-    EPOCHS = 4
+    EPOCHS = 30
     WEIGHT_DECAY = 1.0e-4
     SAVE_PATH = "logs"
     BASE_LR = 0.0006
