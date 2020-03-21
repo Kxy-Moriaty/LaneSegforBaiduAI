@@ -22,7 +22,7 @@ device_list = [0,1,2,3]
 train_net = 'deeplabv3p'
 nets = {'deeplabv3p': DeeplabV3Plus, 'unet': ResNetUNet}
 
-Resume = False
+
 
 def train_epoch(net, epoch, dataLoader, optimizer, trainF, config):
     net.train()
@@ -102,30 +102,49 @@ def main():
     
     
     net = nets[train_net](lane_config)
-    optimizer = torch.optim.Adam(net.parameters(), lr=lane_config.BASE_LR, weight_decay=lane_config.WEIGHT_DECAY)
+    
+    
 
-    epoch_to_continue = 0#
-    if Resume is True:     
-        checkpoint_path = os.path.join(os.getcwd(), lane_config.SAVE_PATH, "epoch{}Net.pth.tar".format(epoch_to_continue))
-        checkpoint = torch.load(checkpoint_path)
-        #model_param = torch.load(checkpoint_path)['state_dict']
-        #model_param = {k.replace('module.', ''):v for k, v in model_param.items()}
-        net.load_state_dict(checkpoint['state_dict']) #加载net参数
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        epoch_to_continue = checkpoint['epoch']
-
-
+    
+    #先将net转入cuda中
     if torch.cuda.is_available():
+        print("cuda is available")
         net = net.cuda(device=device_list[0])
-
         #在这里加了一个数据并行，相当于甲类一个moduel
-        net = torch.nn.DataParallel(net, device_ids=device_list)
+        #net = torch.nn.DataParallel(net, device_ids=device_list)
+    
     # optimizer = torch.optim.SGD(net.parameters(), lr=lane_config.BASE_LR,
     #                             momentum=0.9, weight_decay=lane_config.WEIGHT_DECAY)
 
+    #得到一个optimizer，若是要恢复训练，则在Resume块中重新加载参数
+    optimizer = torch.optim.Adam(net.parameters(), lr=lane_config.BASE_LR, weight_decay=lane_config.WEIGHT_DECAY)
+    
 
-    for epoch in range(epoch_to_continue,epoch_to_continue+lane_config.EPOCHS):
-        # adjust_lr(optimizer, epoch)
+    # 是否Resume 恢复训练
+    Resume = True
+    epoch_to_continue = 25#
+    if Resume is True:     
+        checkpoint_path = os.path.join(os.getcwd(), lane_config.SAVE_PATH, "epoch{}Net.pth.tar".format(epoch_to_continue))
+        if not os.path.exists(checkpoint_path):
+            print("checkpoint_path not exists!")
+            exit()
+        
+        checkpoint = torch.load(checkpoint_path,map_location = 'cuda:{}'.format(device_list[0]))
+        #model_param = torch.load(checkpoint_path)['state_dict']
+        #model_param = {k.replace('module.', ''):v for k, v in model_param.items()}
+        net.load_state_dict(checkpoint['state_dict']) #加载net参数
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])#加载optimizer参数
+        epoch_to_continue = checkpoint['epoch']
+
+    #加入数据并行
+    if torch.cuda.is_available():
+        #在这里加了一个数据并行，相当于甲类一个moduel
+        net = torch.nn.DataParallel(net, device_ids=device_list)
+
+
+
+    for epoch in range(epoch_to_continue+1,epoch_to_continue+lane_config.EPOCHS):
+        adjust_lr(optimizer, epoch)
         train_epoch(net, epoch, train_data_batch, optimizer, trainF, lane_config)
         if epoch % 5 == 0:
             #存储的参数是net的模型参数，没有网络结构
