@@ -91,9 +91,12 @@ def main():
     
     test_dir = 'test_example'
     model_dir = 'test_example/logs_1'
-    model_path = os.path.join(model_dir,'finalNet.pth.tar')
-    model_path = 'test_example/logs_2/epoch25Net.pth.tar'
+   # model_path = os.path.join(model_dir,'finalNet.pth.tar')
+    #model_path = 'test_example/logs_3/epoch50Net.pth.tar'
+    epoch = 65
+    model_path = 'logs/epoch{}Net.pth.tar'.format(epoch)
     if not os.path.exists(model_path):
+        print("no model_path")
         exit()
     
     print('Loading model...')
@@ -116,7 +119,7 @@ def main():
 
     #对预测的结果进行处理，进行了颜色的转换
     color_mask = get_color_mask(pred)
-    cv2.imwrite(os.path.join(test_dir, 'color_mask.jpg'), color_mask)
+    cv2.imwrite(os.path.join(test_dir, 'epoch{}.jpg'.format(epoch)), color_mask)
 
 
 if __name__ == '__main__':

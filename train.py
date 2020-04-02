@@ -122,7 +122,7 @@ def main():
 
     # 是否Resume 恢复训练
     Resume = True
-    epoch_to_continue = 25#
+    epoch_to_continue = 65#
     if Resume is True:     
         checkpoint_path = os.path.join(os.getcwd(), lane_config.SAVE_PATH, "epoch{}Net.pth.tar".format(epoch_to_continue))
         if not os.path.exists(checkpoint_path):
