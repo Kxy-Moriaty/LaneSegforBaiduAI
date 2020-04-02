@@ -103,23 +103,37 @@ def main():
     net = load_model(model_path)
     print('Done.')
 
-    img_path = os.path.join(test_dir, 'test.jpg')
-    img = cv2.imread(img_path)
 
-    #对图片进行tansform，可以让网络认识
-    img = img_transform(img)
+    for imgNum in range(100):
 
-    print('Model infering...')
+        imgFileName = 'test_example/TestImages/Image%05d.jpg'%(imgNum)
+    # img_path = os.path.join(test_dir, 'test.jpg')
+        if not os.path.exists(imgFileName):
+            print('no such img path:',imgFileName)
+            break
+        img = cv2.imread(imgFileName)
 
-    #进行model inference
+        #对图片进行tansform，可以让网络认识
+        img = img_transform(img)
 
-    #__call__ 使用了forward进行前向传播
-    pred = net(img)
-    print('Done.')
+        print('Model infering...')
 
-    #对预测的结果进行处理，进行了颜色的转换
-    color_mask = get_color_mask(pred)
-    cv2.imwrite(os.path.join(test_dir, 'epoch{}.jpg'.format(epoch)), color_mask)
+        #进行model inference
+
+        #__call__ 使用了forward进行前向传播
+        pred = net(img)
+        print('Done.')
+
+        #对预测的结果进行处理，进行了颜色的转换
+        color_mask = get_color_mask(pred)
+
+        #保存结果图
+        outputPath = 'test_example/ResImages'
+        if not os.path.exists(outputPath):
+            os.makedirs(outputPath)
+        imgOutputFilename = os.path.join(outputPath,"epoch%dRes_%05d.jpg" % (epoch,imgNum))
+        #cv2.imwrite(os.path.join(test_dir, 'epoch{}.jpg'.format(epoch)), color_mask)
+        cv2.imwrite(imgOutputFilename, color_mask)
 
 
 if __name__ == '__main__':
